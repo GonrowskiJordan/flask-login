@@ -13,12 +13,13 @@ from attest import Tests, raises, assert_hook
 from contextlib import contextmanager
 from flask import (Flask, session, get_flashed_messages, url_for, request,
                    signals_available)
-from flaskext.login import (
+from flask.views import MethodView
+from flask.ext.login import (
     encode_cookie, decode_cookie, make_next_param, login_url, LoginManager,
-    login_user, logout_user, current_user, login_required, LOGIN_MESSAGE,
-    confirm_login, UserMixin, AnonymousUser, make_secure_token,
-    user_logged_in, user_logged_out, user_login_confirmed,
-    user_unauthorized, user_needs_refresh, session_protected
+    login_user, logout_user, current_user, login_required, LoginRequiredMixin,
+    LOGIN_MESSAGE, confirm_login, UserMixin, AnonymousUser, make_secure_token,
+    user_logged_in, user_logged_out, user_login_confirmed, user_unauthorized, 
+    user_needs_refresh, session_protected
 )
 from werkzeug.exceptions import Unauthorized
 from werkzeug.utils import parse_cookie
@@ -32,10 +33,10 @@ class User(UserMixin):
         self.id = id
         self.name = name
         self.active = active
-    
+
     def is_active(self):
         return self.active
-    
+
     def get_auth_token(self):
         return make_secure_token(self.name, key="deterministic")
 
@@ -77,11 +78,11 @@ def app_context():
     app.config["TESTING"] = True
     app.config["PROPAGATE_EXCEPTIONS"] = True
     app.config["DEBUG"] = True
-    
+
     @app.route("/")
     def index():
         return u"The index"
-    
+
     @app.route("/login")
     def login():
         id = int(request.args["id"])
@@ -93,24 +94,24 @@ def app_context():
             return u"Logged in"
         else:
             return u"Go away, creeper"
-    
-    @app.route("/protected")
-    @login_required
-    def protected():
-        return u"Welcome, %s" % current_user.name
-    
+
+    class Protected(LoginRequiredMixin, MethodView):
+        def get(self):
+            return u"Welcome, %s" % current_user.name
+    app.add_url_rule('/protected', view_func=Protected.as_view('protected'))
+
     @app.route("/logout")
     @login_required
     def logout():
         logout_user()
         return u"Logged out"
-    
+
     @app.route("/reauth")
     @login_required
     def reauth():
         confirm_login()
         return u"Login confirmed"
-    
+
     with app.test_request_context():
         yield app
 
@@ -300,6 +301,15 @@ def remember_interactive(app):
 
 
 @login.test
+def static_interactive(app):
+    setup_interactive(app)
+    with app.test_client() as c:
+        rv = c.get("/static/style.css")
+        assert rv.data == 'static content'
+        assert current_user.is_anonymous()
+
+
+@login.test
 def auth_token_interactive(app):
     setup_interactive(app)
     app.login_manager.token_loader(get_user_by_token)
@@ -390,7 +400,7 @@ def user_mixin():
     class MyUser(UserMixin):
         def __init__(self, id):
             self.id = id
-    
+
     user = MyUser(1)
     assert user.is_authenticated()
     assert user.is_active()
