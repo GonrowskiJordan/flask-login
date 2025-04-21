@@ -46,7 +46,7 @@ they need to log in, and the like.
 Once the actual application object has been created, you can configure it for
 login with::
 
-    login_manager.setup_app(app)
+    login_manager.init_app(app)
 
 
 How it Works
@@ -147,7 +147,7 @@ To customize the message category, set `LoginManager.login_message_category`::
 
     login_manager.login_message_category = "info"
 
-When the log in view is redirected to, it will have a `next` variable in the
+When the log in view is redirected to, it will have a ``next`` variable in the
 query string, which is the page that the user was trying to access.
 
 If you would like to customize the process further, decorate a function with
@@ -162,7 +162,7 @@ If you would like to customize the process further, decorate a function with
 Anonymous Users
 ===============
 By default, when a user is not actually logged in, `current_user` is set to
-an `AnonymousUser` object. It has the following properties:
+an `AnonymousUserMixin` object. It has the following properties:
 
 - `is_active` and `is_authenticated` return `False`
 - `is_anonymous` returns `True`
